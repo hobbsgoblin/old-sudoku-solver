@@ -35,7 +35,7 @@ class Solver {
     const yCoords = [0,1,2,3,4,5,6,7,8].map(x => [y, x]).filter(coord => coord[1] !== x);
     const squareCoords = this.getSquareCoords(this.getSquare(y, x))
         .filter(coord => coord[0] !== y || coord[1] !== x);
-    return [].concat(xCoords, yCoords, squareCoords);
+    return {x: xCoords, y: yCoords, squareCoords: squareCoords};
   }
 
   checkForSolution(state, y, x) {
@@ -56,32 +56,18 @@ class Solver {
 
     // Check what adjacent nulls CAN'T be
       // For squares, x-line, and y-line
-    const adjacentVals = this.getValues(state, this.getAdjacentCoordinates(y, x)).filter(val => val !== null)
-    const adjacentCoords = this.getAdjacentCoordinates(y, x);
-    const adjacentEmptyCoords =
-        [].concat(adjacentCoords)
-        .filter(coord => this.getValue(state, coord) === null);
-    const adjacentNonOptions =
-        adjacentEmptyCoords.reduce((nonOptions, coord) => {
-          const adjacent = this.getAdjacentValues(state, coord[0], coord[1]);
-          return nonOptions.concat(this.getNonOptions(adjacent));
-        }, [])
-        .filter(option => {
-          if (adjacentVals.indexOf(option) !== -1) {
-            return false;
-          }
-          return this.getValues(state, this.getAdjacentCoordinates(y, x)).indexOf(option) === -1
-        });
-    const intersectNonOptions = adjacentNonOptions.reduce((nonOptions, option, index, arr) => {
-      if (arr.filter(op => op === option).length === adjacentEmptyCoords.length - 1) {
-        return nonOptions.concat(option);
-      }
-      return nonOptions;
-    }, []);
-    if (Array.from(new Set(intersectNonOptions)).length === 1) {
-      console.log([y, x]);
-      console.log(adjacentNonOptions[0]);
-      return adjacentNonOptions[0];
+    const xNonOptions = this.getNonOptions(state, this.getAdjacentCoordinates(y, x).x);
+    const yNonOptions = this.getNonOptions(state, this.getAdjacentCoordinates(y, x).y);
+    const squareNonOptions = this.getNonOptions(state, this.getAdjacentCoordinates(y, x).squareCoords);
+
+    if (xNonOptions.length === 1) {
+      return xNonOptions[0];
+    }
+    if (yNonOptions.length === 1) {
+      return yNonOptions[0];
+    }
+    if (squareNonOptions.length === 1) {
+      return squareNonOptions[0];
     }
 
     return false;
@@ -93,10 +79,31 @@ class Solver {
     });
   }
 
-  getNonOptions(adjacent) {
-    return [1,2,3,4,5,6,7,8,9].filter(num => {
-      return [].concat(adjacent.x, adjacent.y, adjacent.squareVals).indexOf(num) !== -1;
-    });
+  getNonOptions(state, coords) {
+    // Get null coordinates
+    const nullCoords = coords.filter(coord => this.getValue(state, coord) === null);
+    const nonNullCoords = coords.filter(coord => this.getValue(state, coord) !== null);
+    // Get all values that the null coordinates cannot be,
+    // and that aren't already in the other coordinates
+    const nullCoordNonOptions = nullCoords
+        .reduce((nonOptions, nullCoord) => {
+          // Get all values that the coordinate COULD be
+          const options = this.getOptions(this.getAdjacentValues(state, nullCoord[0], nullCoord[1]));
+          // Add all values that aren't an option for the coordinate
+          return nonOptions
+              .concat([1,2,3,4,5,6,7,8,9]
+              .filter(num => options.indexOf(num) === -1));
+        }, [])
+        .filter(option => this.getValues(state, nonNullCoords).indexOf(option) === -1);
+    // Get all values that are "non-options" for every null coordinate given
+    const remainingNonOptions = nullCoordNonOptions.reduce((nonOptions, option, index, arr) => {
+        if (arr.filter(op => op === option).length === nullCoords.length) {
+          return nonOptions.concat(option);
+        }
+        return nonOptions;
+      }, []);
+    // Return unique values from
+    return Array.from(new Set(remainingNonOptions));
   }
 
   getValues(state, coordinates) {
@@ -145,10 +152,11 @@ class Solver {
     }
     if (x === 8 && y === 8) {
       if (this.isSolved(state)) {
+        console.log('Solved: ');
+        console.log(this.printState(state));
         return state;
       }
       console.log(this.printState(state));
-      // console.log(this.getAdjacentValues(state, y, x));
       return this.solve(state, 0, 0);
     }
 
@@ -177,13 +185,8 @@ class Solver {
 }
 
 const solver = new Solver();
-// console.log(solver.printState(mediumState));
-// console.log(
-//     solver.printState(solver.solve(mediumState))
-// );
 console.log(solver.printState(mediumState));
 console.log(solver.solve(mediumState));
-// console.log(solver.checkForSolution(mediumState, 3, 5));
 
 
 
