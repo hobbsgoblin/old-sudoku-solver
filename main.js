@@ -52,31 +52,48 @@ class Solver {
     if (squareNonOptions.length === 1) return squareNonOptions[0];
 
     // const xSquares = this.getUniqueValues(this.getSquares(adjacentCoords.x));
-    const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);
-    const xNullCoords = this.filterNullCoords(state, adjCoordsInc.x, true);
-    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjCoordsInc.x));
-    const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));
+    const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);  // Get adjacent coordinates, both num and null
+    const xNullCoords = this.filterNullCoords(state, adjCoordsInc.x, true);  // Null adjacent coordinates
+    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjCoordsInc.x));  // Non-null values
+    const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));  // Vals not in X yet
     const xEval = xNullCoords.map(coord => {
       return {
         coord: coord,
         available: xNonExistingVals,
-        options: this.getOptions(state, coord),
-        canBeOf: this.arrayIntersect(xNonExistingVals, this.getOptions(state, coord))
+        options: this.getOptions(state, coord),  // Legal values for coord
+        canBeOf: this.arrayIntersect(xNonExistingVals, this.getOptions(state, coord))  // Vals not in X yet that are options for coord
       }
     });
+    console.log([y, x]);
+    console.log(xEval);
     const matchingVals = xEval.reduce((matching, coord) => {
-      const matchingOps = xEval.filter(otherCoord => {
-        return this.arraysAreIdentical(coord.options, otherCoord.options) &&
+      const matchingOp = xEval
+          .filter(otherCoord => {  // Matching canBeOf values
+            return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
                 !this.arraysAreIdentical(coord.coord, otherCoord.coord);
-      });
-      if (matchingOps) {
-        return matching.concat(matchingOps);
+          })
+          .pop();
+      if (matchingOp && !this.arrayContainsArray(matching, matchingOp.canBeOf)) {
+        return matching.concat([matchingOp.canBeOf]);
       }
-      // return matching;
+      return matching;
     }, []);
     console.log(matchingVals);
+
+
     // If no solution is found return null
     return null;
+  }
+
+  arrayContainsArray(containerArray, array) {
+    return containerArray
+        .filter((item) => {
+          return (
+            Array.isArray(item) &&
+            this.arrayIntersect(item, array).length === array.length
+          );
+        })
+        .length > 0;
   }
 
   arrayIntersect(arr1, arr2) {
@@ -194,24 +211,24 @@ class Solver {
   }
 
   solve(state, x = 0, y = 0, prevState = null) {
-    if (x === 0 && y === 0 ) {
-      if (prevState === state) return false;  // Detect infinite loop
-      prevState = state;
-    }
     try {
       state[y][x] = this.checkForSolution(state, [y, x]);
     } catch (error) {
-      console.log(error.data);
+      console.log(error);
       if (error.data) console.log(this.printState(error.data.state));
       return 'Error';
     }
+
     if (x === 8 && y === 8) {
+      console.log(this.printState(state));
       if (this.isSolved(state)) {
-        console.log('Solved: ');
-        console.log(this.printState(state));
+        console.log('Solved!');
         return state;
       }
-      console.log(this.printState(state));
+      if (prevState === state) {  // Detect infinite loop
+        return false;
+      }
+      prevState = state;
       return this.solve(state, 0, 0, prevState);
     }
 
