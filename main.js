@@ -73,11 +73,25 @@ class Solver {
                 !this.arraysAreIdentical(coord.coord, otherCoord.coord);
           })
           .pop();
-      if (matchingOp && !this.arrayContainsArray(matching, matchingOp.canBeOf)) {
-        return matching.concat([matchingOp.canBeOf]);
-      }
+      // if (matchingOp && !this.arrayContainsArray(matching, matchingOp.canBeOf)) {
+      //   return matching.concat([matchingOp.canBeOf]);
+      // }
+        if (matchingOp) {
+          return matching.concat({
+            coord: matchingOp.coord,
+            vals: matchingOp.canBeOf
+          });
+        }
       return matching;
     }, []);
+    const xEvalFiltered = xEval.map(coord => {
+      matchingVals.forEach(match => {
+        if (!this.arraysAreIdentical(coord.coord, match.coord)) {
+
+        }
+      });
+      return coord;
+    });
     console.log(matchingVals);
 
 
