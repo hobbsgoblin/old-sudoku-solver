@@ -66,45 +66,55 @@ class Solver {
     });
     console.log([y, x]);
     console.log(xEval);
-    const matchingVals = xEval.reduce((matching, coord) => {
-      const matchingOp = xEval
-          .filter(otherCoord => {  // Matching canBeOf values
-            return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
-                !this.arraysAreIdentical(coord.coord, otherCoord.coord);
-          })
-          .pop();
-      // if (matchingOp && !this.arrayContainsArray(matching, matchingOp.canBeOf)) {
-      //   return matching.concat([matchingOp.canBeOf]);
-      // }
-        if (matchingOp) {
-          return matching.concat({
-            coord: matchingOp.coord,
-            vals: matchingOp.canBeOf
-          });
+    const matchingVals = xEval.reduce((matching, coord, index, xEvalArr) => {
+        // Get all OTHER coords with matching canBeOf values
+        const matchingOps = xEvalArr
+            .filter(otherCoord => {
+              return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
+                      !this.arraysAreIdentical(coord.coord, otherCoord.coord);
+            });
+
+        if (matchingOps.length === coord.canBeOf.length - 1 &&
+            !this.arrayContainsArray(matching, coord.canBeOf)) {
+          return matching.concat([coord.canBeOf]);
         }
-      return matching;
+        return matching;
     }, []);
+    // Remove matching vals from all other coords
     const xEvalFiltered = xEval.map(coord => {
       matchingVals.forEach(match => {
-        if (!this.arraysAreIdentical(coord.coord, match.coord)) {
-
+        if (!this.arraysAreIdentical(coord.canBeOf, match)) {
+          coord.canBeOf = coord.canBeOf.filter(val => !match.includes(val));
         }
       });
       return coord;
     });
-    console.log(matchingVals);
-
+    console.log(xEvalFiltered);
 
     // If no solution is found return null
     return null;
   }
 
+  // Detect if multiple coords have the exact same canbeof values
+  // Detect if the number of coords with the same canbeof values is the same as the number of values
+  // Remove those values from all other coords
+  // Check for x, y, and square coords and then intersect results?
+  // Create metastate with new canbeof values in place of previous getOptions?
+  // Otherwise modify getOptions to use do this automatically?
+
+  // test = [
+  //     {coord: [2,1], available: [1,2,7,8], canBeOf: [1,2,7,8], mustBeOf: null},
+  //     {coord: [5,1], available: [1,2,7,8], canBeOf: [2,7,8], mustBeOf: null},
+  //     {coord: [7,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
+  //     {coord: [8,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
+  // ];
+
   arrayContainsArray(containerArray, array) {
     return containerArray
         .filter((item) => {
           return (
-            Array.isArray(item) &&
-            this.arrayIntersect(item, array).length === array.length
+              Array.isArray(item) &&
+              this.arrayIntersect(item, array).length === array.length
           );
         })
         .length > 0;
@@ -114,20 +124,6 @@ class Solver {
     const set1 = new Set(arr1), set2 = new Set(arr2);
     return [...set1].filter(val => set2.has(val));
   }
-
-  // test = [
-  //     {coord: [2,1], available: [1,2,7,8], canBeOf: [1,2,7,8], mustBeOf: null},
-  //     {coord: [5,1], available: [1,2,7,8], canBeOf: [2,7,8], mustBeOf: null},
-  //     {coord: [7,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
-  //     {coord: [8,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
-  // ];
-
-  // Detect if multiple coords have the exact same canbeof values
-  // Detect if the number of coords with the same canbeof values is the same as the number of values
-  // Remove those values from all other coords
-  // Check for x, y, and square coords and then intersect results?
-  // Create metastate with new canbeof values in place of previous getOptions?
-  // Otherwise modify getOptions to use do this automatically?
 
   getOptions(state, coord) {
     const adjacent = this.getAdjacentValues(state, coord);
@@ -217,7 +213,8 @@ class Solver {
   }
 
   arraysAreIdentical(arr1, arr2) {
-    return this.arrayIntersect(arr1, arr2).length === arr1.length;
+    return this.arrayIntersect(arr1, arr2).length === arr1.length &&
+        arr1.length === arr2.length;
   }
 
   isSolved(state) {
