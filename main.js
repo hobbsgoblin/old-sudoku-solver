@@ -45,7 +45,7 @@ class Solver {
     if (options.length === 1) {
       return options[0];
     }
-    if (options.length === 0 || allowed.length === 0) {
+    if (allowed.length === 0) {
       const err = new Error();
       err.data = {
         state: state,
@@ -246,6 +246,7 @@ class Solver {
   }
 
   arraysAreIdentical(arr1, arr2) {
+    if (!Array.isArray(arr1) || !Array.isArray(arr2)) return undefined;
     return arr1.sort().toString() === arr2.sort().toString();
   }
 
@@ -268,10 +269,11 @@ class Solver {
         console.log('Solved!');
         return state;
       }
-      if (prevState === state) {  // Detect infinite loop
-        return false;
-      }
-      prevState = state;
+      // THIS IS BROKEN FOR NOW
+      // if (this.arraysAreIdentical(prevState, state)) {  // Detect infinite loop
+      //   return false;
+      // }
+      // prevState = state;
       return this.solve(state, 0, 0, prevState);
     }
 
