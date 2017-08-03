@@ -27,12 +27,16 @@ class Solver {
     const [y, x] = coord;
     if (state[y][x]) return state[y][x];
     const adjacentCoords = this.getAdjacentCoords(coord);
-    const options = this.getOptions(state, coord);
 
+    const allowed = this.getAllowed(state, coord);
+    const options = this.getOptions(state, coord);
+    if (allowed.length === 1) {
+      return allowed[0];
+    }
     if (options.length === 1) {
       return options[0];
     }
-    if (options.length === 0) {
+    if (options.length === 0 || allowed.length === 0) {
       const err = new Error();
       err.data = {
         state: state,
@@ -50,46 +54,6 @@ class Solver {
     if (xNonOptions.length === 1) return xNonOptions[0];
     if (yNonOptions.length === 1) return yNonOptions[0];
     if (squareNonOptions.length === 1) return squareNonOptions[0];
-
-    // const xSquares = this.getUniqueValues(this.getSquares(adjacentCoords.x));
-    const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);  // Get adjacent coordinates, both num and null
-    const xNullCoords = this.filterNullCoords(state, adjCoordsInc.x, true);  // Null adjacent coordinates
-    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjCoordsInc.x));  // Non-null values
-    const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));  // Vals not in X yet
-    const xEval = xNullCoords.map(coord => {
-      return {
-        coord: coord,
-        available: xNonExistingVals,
-        options: this.getOptions(state, coord),  // Legal values for coord
-        canBeOf: this.arrayIntersect(xNonExistingVals, this.getOptions(state, coord))  // Vals not in X yet that are options for coord
-      }
-    });
-    console.log([y, x]);
-    console.log(xEval);
-    const matchingVals = xEval.reduce((matching, coord, index, xEvalArr) => {
-        // Get all OTHER coords with matching canBeOf values
-        const matchingOps = xEvalArr
-            .filter(otherCoord => {
-              return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
-                      !this.arraysAreIdentical(coord.coord, otherCoord.coord);
-            });
-
-        if (matchingOps.length === coord.canBeOf.length - 1 &&
-            !this.arrayContainsArray(matching, coord.canBeOf)) {
-          return matching.concat([coord.canBeOf]);
-        }
-        return matching;
-    }, []);
-    // Remove matching vals from all other coords
-    const xEvalFiltered = xEval.map(coord => {
-      matchingVals.forEach(match => {
-        if (!this.arraysAreIdentical(coord.canBeOf, match)) {
-          coord.canBeOf = coord.canBeOf.filter(val => !match.includes(val));
-        }
-      });
-      return coord;
-    });
-    console.log(xEvalFiltered);
 
     // If no solution is found return null
     return null;
@@ -120,16 +84,52 @@ class Solver {
         .length > 0;
   }
 
-  arrayIntersect(arr1, arr2) {
-    const set1 = new Set(arr1), set2 = new Set(arr2);
-    return [...set1].filter(val => set2.has(val));
+  arrayIntersect(...arrs) {
+    return arrs.reduce((intersecting, arr) => {
+      const set1 = new Set(intersecting), set2 = new Set(arr);
+      return [...set1].filter(val => set2.has(val));
+    }, arrs.pop());
   }
 
-  getOptions(state, coord) {
+  getAllowed(state, coord) {
     const adjacent = this.getAdjacentValues(state, coord);
     return [1,2,3,4,5,6,7,8,9].filter(num => {
       return ![].concat(adjacent.x, adjacent.y, adjacent.squareVals).includes(num);
     });
+  }
+
+  getOptions(state, coord) {
+    const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);  // Get adjacent coordinates, both num and null
+    const xNullCoords = this.filterNullCoords(state, adjCoordsInc.x, true);  // Null adjacent coordinates
+    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjCoordsInc.x));  // Non-null values
+    const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));  // Vals not in X yet
+    const xEval = xNullCoords.map(coord => ({
+        coord: coord,
+        available: xNonExistingVals,
+        options: this.getAllowed(state, coord),  // Legal values for coord
+        canBeOf: this.arrayIntersect(xNonExistingVals, this.getAllowed(state, coord))  // Vals not in X yet that are options for coord
+    }));
+    const matchingVals = xEval.reduce((matching, coord) => {
+      // Get all OTHER coords with matching canBeOf values
+      const matchingOps = xEval
+      .filter(otherCoord => {
+        return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
+            !this.arraysAreIdentical(coord.coord, otherCoord.coord);
+      });
+
+      if (matchingOps.length === coord.canBeOf.length - 1 &&
+          !this.arrayContainsArray(matching, coord.canBeOf)) {
+        return matching.concat([coord.canBeOf]);
+      }
+      return matching;
+    }, []);
+    const filteredCoord = xEval.find(xCoord => this.arraysAreIdentical(xCoord.coord, coord));
+    matchingVals.forEach(match => {
+      if (!this.arraysAreIdentical(filteredCoord.canBeOf, match)) {
+        filteredCoord.canBeOf = filteredCoord.canBeOf.filter(val => !match.includes(val));
+      }
+    });
+    return filteredCoord.canBeOf;
   }
 
   getNonOptions(state, coords) {
@@ -142,6 +142,7 @@ class Solver {
         .reduce((nonOptions, nullCoord) => {
           // Get all values that the coordinate COULD be
           const options = this.getOptions(state, nullCoord);
+          console.log(options);
           // Add all values that aren't an option for the coordinate
           return nonOptions
               .concat([1,2,3,4,5,6,7,8,9]
@@ -213,8 +214,9 @@ class Solver {
   }
 
   arraysAreIdentical(arr1, arr2) {
-    return this.arrayIntersect(arr1, arr2).length === arr1.length &&
-        arr1.length === arr2.length;
+    // return this.arrayIntersect(arr1, arr2).length === arr1.length &&
+    //     arr1.length === arr2.length;
+    return arr1.sort().toString() === arr2.sort().toString();
   }
 
   isSolved(state) {
