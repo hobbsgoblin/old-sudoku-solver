@@ -27,8 +27,17 @@ class Solver {
     const [y, x] = coord;
     if (state[y][x]) return state[y][x];
     const adjacentCoords = this.getAdjacentCoords(coord);
-
     const allowed = this.getAllowed(state, coord);
+    const xAllowed = this.getXAllowed(state, coord);
+    const yAllowed = this.getYAllowed(state, coord);
+    const squareAllowed = this.getSquareAllowed(state, coord);
+    if (y === 6 && x === 7) {
+      console.log(squareAllowed);
+    }
+    if (xAllowed.length === 1) return xAllowed[0];
+    if (yAllowed.length === 1) return yAllowed[0];
+    if (squareAllowed.length === 1) return squareAllowed[0];
+
     const options = this.getOptions(state, coord);
     if (allowed.length === 1) {
       return allowed[0];
@@ -59,18 +68,18 @@ class Solver {
     return null;
   }
 
-  // Detect if multiple coords have the exact same canbeof values
-  // Detect if the number of coords with the same canbeof values is the same as the number of values
+  // Detect if multiple coords have the exact same options
+  // Detect if the number of coords with the same options is the same as the number of values
   // Remove those values from all other coords
   // Check for x, y, and square coords and then intersect results?
-  // Create metastate with new canbeof values in place of previous getOptions?
+  // Create metastate with new options in place of previous getOptions?
   // Otherwise modify getOptions to use do this automatically?
 
   // test = [
-  //     {coord: [2,1], available: [1,2,7,8], canBeOf: [1,2,7,8], mustBeOf: null},
-  //     {coord: [5,1], available: [1,2,7,8], canBeOf: [2,7,8], mustBeOf: null},
-  //     {coord: [7,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
-  //     {coord: [8,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
+  //     {coord: [2,1], options: [1,2,7,8], mustBeOf: null},
+  //     {coord: [5,1], options: [2,7,8], mustBeOf: null},
+  //     {coord: [7,1], options: [1,2], mustBeOf: null},
+  //     {coord: [8,1], options: [1,2], mustBeOf: null},
   // ];
 
   arrayContainsArray(containerArray, array) {
@@ -97,39 +106,63 @@ class Solver {
       return ![].concat(adjacent.x, adjacent.y, adjacent.squareVals).includes(num);
     });
   }
+  getXAllowed(state, coord) {
+    const adjacent = this.getAdjacentValues(state, coord);
+    return [1,2,3,4,5,6,7,8,9].filter(num => {
+      return !adjacent.x.includes(num);
+    });
+  }
+  getYAllowed(state, coord) {
+    const adjacent = this.getAdjacentValues(state, coord);
+    return [1,2,3,4,5,6,7,8,9].filter(num => {
+      return !adjacent.y.includes(num);
+    });
+  }
+  getSquareAllowed(state, coord) {
+    const adjacent = this.getAdjacentValues(state, coord);
+    return [1,2,3,4,5,6,7,8,9].filter(num => {
+      return !adjacent.squareVals.includes(num);
+    });
+  }
 
   getOptions(state, coord) {
+    let allowed = this.getAllowed(state, coord);
     const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);  // Get adjacent coordinates, both num and null
-    const xNullCoords = this.filterNullCoords(state, adjCoordsInc.x, true);  // Null adjacent coordinates
-    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjCoordsInc.x));  // Non-null values
+    const xMatching = this.findMatching(state, adjCoordsInc.x);
+    const yMatching = this.findMatching(state, adjCoordsInc.y);
+    const squareMatching = this.findMatching(state, adjCoordsInc.squareCoords);
+
+    [].concat(xMatching, yMatching, squareMatching).forEach(match => {
+      if (!this.arraysAreIdentical(allowed, match)) {
+        allowed = allowed.filter(val => !match.includes(val));
+      }
+    });
+    return allowed;
+  }
+
+  findMatching(state, adjacent) {
+    const xNullCoords = this.filterNullCoords(state, adjacent, true);  // Null adjacent coordinates
+    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjacent));  // Non-null values
     const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));  // Vals not in X yet
     const xEval = xNullCoords.map(coord => ({
-        coord: coord,
-        available: xNonExistingVals,
-        options: this.getAllowed(state, coord),  // Legal values for coord
-        canBeOf: this.arrayIntersect(xNonExistingVals, this.getAllowed(state, coord))  // Vals not in X yet that are options for coord
+      coord: coord,
+      available: xNonExistingVals,
+      options: this.getAllowed(state, coord),  // Legal values for coord
     }));
-    const matchingVals = xEval.reduce((matching, coord) => {
-      // Get all OTHER coords with matching canBeOf values
+    return xEval.reduce((matching, coord) => {
+      // Get all OTHER coords with matching options
       const matchingOps = xEval
       .filter(otherCoord => {
-        return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
+        return this.arraysAreIdentical(coord.options, otherCoord.options) &&
             !this.arraysAreIdentical(coord.coord, otherCoord.coord);
       });
 
-      if (matchingOps.length === coord.canBeOf.length - 1 &&
-          !this.arrayContainsArray(matching, coord.canBeOf)) {
-        return matching.concat([coord.canBeOf]);
+      if (matchingOps.length === coord.options.length - 1 &&
+          !this.arrayContainsArray(matching, coord.options)) {
+        return matching.concat([coord.options]);
       }
       return matching;
     }, []);
-    const filteredCoord = xEval.find(xCoord => this.arraysAreIdentical(xCoord.coord, coord));
-    matchingVals.forEach(match => {
-      if (!this.arraysAreIdentical(filteredCoord.canBeOf, match)) {
-        filteredCoord.canBeOf = filteredCoord.canBeOf.filter(val => !match.includes(val));
-      }
-    });
-    return filteredCoord.canBeOf;
   }
 
   getNonOptions(state, coords) {
@@ -142,7 +175,6 @@ class Solver {
         .reduce((nonOptions, nullCoord) => {
           // Get all values that the coordinate COULD be
           const options = this.getOptions(state, nullCoord);
-          console.log(options);
           // Add all values that aren't an option for the coordinate
           return nonOptions
               .concat([1,2,3,4,5,6,7,8,9]
@@ -214,8 +246,6 @@ class Solver {
   }
 
   arraysAreIdentical(arr1, arr2) {
-    // return this.arrayIntersect(arr1, arr2).length === arr1.length &&
-    //     arr1.length === arr2.length;
     return arr1.sort().toString() === arr2.sort().toString();
   }
 
