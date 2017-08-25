@@ -338,10 +338,21 @@ const hardState = [
   [8,6,_,_,2,4,_,9,_]
 ];
 
+const fiendishState = [
+  [_,_,_,5,_,_,_,6,_],
+  [8,_,9,_,_,_,_,1,_],
+  [1,6,_,_,8,7,_,_,_],
+  [3,_,_,_,2,6,_,_,_],
+  [_,_,7,_,1,_,6,_,_],
+  [_,_,_,8,5,_,_,_,3],
+  [_,_,_,4,7,_,_,2,1],
+  [_,4,_,_,_,_,9,_,8],
+  [_,8,_,_,_,3,_,_,_]
+];
+
 const solver = new Solver();
-console.log(solver.printState(hardState));
-console.log(solver.solve(hardState));
-// solver.checkForSolution(hardState, [2, 1]);
+console.log(solver.printState(fiendishState));
+console.log(solver.solve(fiendishState));
 
 const sampleState = [
   [null,null,null,null,null,null,null,null,null],
