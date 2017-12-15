@@ -1,4 +1,5 @@
 class Solver {
+  // Returns all of the values in the same row, column, and square of a given coordinate
   getAdjacentValues(state, coord) {
     const [y, x] = coord;
     const xVals = state[y];
@@ -7,6 +8,7 @@ class Solver {
     return {x: xVals, y: yVals, squareVals: squareVals};
   }
 
+  // Returns all of the coordinates in the same row, column, and square of a given coordinate
   getAdjacentCoords(coord) {
     const [y, x] = coord;
     const xCoords = [0,1,2,3,4,5,6,7,8].map(y => [y, x]).filter(coord => coord[0] !== y);
@@ -15,6 +17,7 @@ class Solver {
         .filter(coord => coord[0] !== y || coord[1] !== x);
     return {x: xCoords, y: yCoords, squareCoords: squareCoords};
   }
+  // Same as getAdjacentCoords but includes given coordinate
   getAdjacentCoordsInclusive(coord) {
     const [y, x] = coord;
     const xCoords = [0,1,2,3,4,5,6,7,8].map(y => [y, x]);
@@ -23,6 +26,7 @@ class Solver {
     return {x: xCoords, y: yCoords, squareCoords: squareCoords};
   }
 
+  // Attempt to find the solution for a given coord
   checkForSolution(state, coord) {
     const [y, x] = coord;
     if (state[y][x]) return state[y][x];
@@ -99,6 +103,7 @@ class Solver {
     return null;
   }
 
+  // If first array contains second array
   arrayContainsArray(containerArray, array) {
     return containerArray
         .filter((item) => {
@@ -110,6 +115,8 @@ class Solver {
         .length > 0;
   }
 
+  // Returns the elements two arrays have in common
+  // Order does NOT matter
   arrayIntersect(arr1, arr2) {
     const set1 = new Set(arr1), set2 = new Set(arr2);
     return [...set1].filter(val => set2.has(val));
@@ -174,10 +181,12 @@ class Solver {
     return coords.filter(coord => this.getValue(state, coord) !== null);
   }
 
+  // Get the value of a given coordinate from the given puzzle state
   getValue(state, coordinate) {
     return state[coordinate[0]][coordinate[1]];
   }
 
+  // Get the square (1 through 9) that contains the given coordinates
   getSquare(y, x) {
     return [1,2,3,4,5,6,7,8,9].filter(square => {
       return this.getSquareCoords(square).some(coord => {
@@ -196,6 +205,7 @@ class Solver {
     }, []);
   }
 
+  // Get the coordinates contained within in a given square (1 through 9)
   getSquareCoords(square) {
     const yMapper = {
       1: [0, 1, 2], 2: [0, 1, 2], 3: [0, 1, 2],
@@ -243,14 +253,14 @@ class Solver {
         return false;
       }
       prevState = state;
-      return this.solve(state, 0, 0, prevState);
+      return this.solve(state, 0, 0, prevState);  // Start from beginning
     }
 
     if (x === 8) {
-      return this.solve(state, 0, y + 1, prevState);
+      return this.solve(state, 0, y + 1, prevState);  // Go to new line
     }
 
-    return this.solve(state, x + 1, y, prevState);
+    return this.solve(state, x + 1, y, prevState);  // Go to next cell
   }
 
   printState(state) {
