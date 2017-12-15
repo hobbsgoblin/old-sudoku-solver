@@ -31,12 +31,25 @@ class Solver {
     const [y, x] = coord;
     if (state[y][x]) return state[y][x];
     const adjacentCoords = this.getAdjacentCoords(coord);
-    const options = this.getOptions(state, coord);
+    const allowed = this.getAllowed(state, coord);
+    const xAllowed = this.getXAllowed(state, coord);
+    const yAllowed = this.getYAllowed(state, coord);
+    const squareAllowed = this.getSquareAllowed(state, coord);
+    if (y === 6 && x === 7) {
+      console.log(squareAllowed);
+    }
+    if (xAllowed.length === 1) return xAllowed[0];
+    if (yAllowed.length === 1) return yAllowed[0];
+    if (squareAllowed.length === 1) return squareAllowed[0];
 
+    const options = this.getOptions(state, coord);
+    if (allowed.length === 1) {
+      return allowed[0];
+    }
     if (options.length === 1) {
       return options[0];
     }
-    if (options.length === 0) {
+    if (allowed.length === 0) {
       const err = new Error();
       err.data = {
         state: state,
@@ -55,92 +68,106 @@ class Solver {
     if (yNonOptions.length === 1) return yNonOptions[0];
     if (squareNonOptions.length === 1) return squareNonOptions[0];
 
-    // const xSquares = this.getUniqueValues(this.getSquares(adjacentCoords.x));
-    const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);  // Get adjacent coordinates, both num and null
-    const xNullCoords = this.filterNullCoords(state, adjCoordsInc.x, true);  // Null adjacent coordinates
-    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjCoordsInc.x));  // Non-null values
-    const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));  // Vals not in X yet
-    const xEval = xNullCoords.map(coord => {
-      return {
-        coord: coord,
-        available: xNonExistingVals,
-        options: this.getOptions(state, coord),  // Legal values for coord
-        canBeOf: this.arrayIntersect(xNonExistingVals, this.getOptions(state, coord))  // Vals not in X yet that are options for coord
-      }
-    });
-    console.log([y, x]);
-    console.log(xEval);
-    const matchingVals = xEval.reduce((matching, coord) => {
-      const matchingOp = xEval
-          .filter(otherCoord => {  // Matching canBeOf values
-            return this.arraysAreIdentical(coord.canBeOf, otherCoord.canBeOf) &&
-                !this.arraysAreIdentical(coord.coord, otherCoord.coord);
-          })
-          .pop();
-      // if (matchingOp && !this.arrayContainsArray(matching, matchingOp.canBeOf)) {
-      //   return matching.concat([matchingOp.canBeOf]);
-      // }
-        if (matchingOp) {
-          return matching.concat({
-            coord: matchingOp.coord,
-            vals: matchingOp.canBeOf
-          });
-        }
-      return matching;
-    }, []);
-    const xEvalFiltered = xEval.map(coord => {
-      matchingVals.forEach(match => {
-        if (!this.arraysAreIdentical(coord.coord, match.coord)) {
-
-        }
-      });
-      return coord;
-    });
-    console.log(matchingVals);
-
-
     // If no solution is found return null
     return null;
   }
+
+  // Detect if multiple coords have the exact same options
+  // Detect if the number of coords with the same options is the same as the number of values
+  // Remove those values from all other coords
+  // Check for x, y, and square coords and then intersect results?
+  // Create metastate with new options in place of previous getOptions?
+  // Otherwise modify getOptions to use do this automatically?
+
+  // test = [
+  //     {coord: [2,1], options: [1,2,7,8], mustBeOf: null},
+  //     {coord: [5,1], options: [2,7,8], mustBeOf: null},
+  //     {coord: [7,1], options: [1,2], mustBeOf: null},
+  //     {coord: [8,1], options: [1,2], mustBeOf: null},
+  // ];
 
   // If first array contains second array
   arrayContainsArray(containerArray, array) {
     return containerArray
         .filter((item) => {
           return (
-            Array.isArray(item) &&
-            this.arrayIntersect(item, array).length === array.length
+              Array.isArray(item) &&
+              this.arrayIntersect(item, array).length === array.length
           );
         })
         .length > 0;
   }
 
-  // Returns the elements two arrays have in common
-  // Order does NOT matter
-  arrayIntersect(arr1, arr2) {
-    const set1 = new Set(arr1), set2 = new Set(arr2);
-    return [...set1].filter(val => set2.has(val));
+  arrayIntersect(...arrs) {
+    return arrs.reduce((intersecting, arr) => {
+      const set1 = new Set(intersecting), set2 = new Set(arr);
+      return [...set1].filter(val => set2.has(val));
+    }, arrs.pop());
   }
 
-  // test = [
-  //     {coord: [2,1], available: [1,2,7,8], canBeOf: [1,2,7,8], mustBeOf: null},
-  //     {coord: [5,1], available: [1,2,7,8], canBeOf: [2,7,8], mustBeOf: null},
-  //     {coord: [7,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
-  //     {coord: [8,1], available: [1,2,7,8], canBeOf: [1,2], mustBeOf: null},
-  // ];
-
-  // Detect if multiple coords have the exact same canbeof values
-  // Detect if the number of coords with the same canbeof values is the same as the number of values
-  // Remove those values from all other coords
-  // Check for x, y, and square coords and then intersect results?
-  // Create metastate with new canbeof values in place of previous getOptions?
-  // Otherwise modify getOptions to use do this automatically?
-
-  getOptions(state, coord) {
+  getAllowed(state, coord) {
     const adjacent = this.getAdjacentValues(state, coord);
     return [1,2,3,4,5,6,7,8,9].filter(num => {
       return ![].concat(adjacent.x, adjacent.y, adjacent.squareVals).includes(num);
     });
+  }
+  getXAllowed(state, coord) {
+    const adjacent = this.getAdjacentValues(state, coord);
+    return [1,2,3,4,5,6,7,8,9].filter(num => {
+      return !adjacent.x.includes(num);
+    });
+  }
+  getYAllowed(state, coord) {
+    const adjacent = this.getAdjacentValues(state, coord);
+    return [1,2,3,4,5,6,7,8,9].filter(num => {
+      return !adjacent.y.includes(num);
+    });
+  }
+  getSquareAllowed(state, coord) {
+    const adjacent = this.getAdjacentValues(state, coord);
+    return [1,2,3,4,5,6,7,8,9].filter(num => {
+      return !adjacent.squareVals.includes(num);
+    });
+  }
+
+  getOptions(state, coord) {
+    let allowed = this.getAllowed(state, coord);
+    const adjCoordsInc = this.getAdjacentCoordsInclusive(coord);  // Get adjacent coordinates, both num and null
+    const xMatching = this.findMatching(state, adjCoordsInc.x);
+    const yMatching = this.findMatching(state, adjCoordsInc.y);
+    const squareMatching = this.findMatching(state, adjCoordsInc.squareCoords);
+
+    [].concat(xMatching, yMatching, squareMatching).forEach(match => {
+      if (!this.arraysAreIdentical(allowed, match)) {
+        allowed = allowed.filter(val => !match.includes(val));
+      }
+    });
+    return allowed;
+  }
+
+  findMatching(state, adjacent) {
+    const xNullCoords = this.filterNullCoords(state, adjacent, true);  // Null adjacent coordinates
+    const xExistingVals = this.getValues(state, this.filterNullCoords(state, adjacent));  // Non-null values
+    const xNonExistingVals = [1,2,3,4,5,6,7,8,9].filter(num => !xExistingVals.includes(num));  // Vals not in X yet
+    const xEval = xNullCoords.map(coord => ({
+      coord: coord,
+      available: xNonExistingVals,
+      options: this.getAllowed(state, coord),  // Legal values for coord
+    }));
+    return xEval.reduce((matching, coord) => {
+      // Get all OTHER coords with matching options
+      const matchingOps = xEval
+      .filter(otherCoord => {
+        return this.arraysAreIdentical(coord.options, otherCoord.options) &&
+            !this.arraysAreIdentical(coord.coord, otherCoord.coord);
+      });
+
+      if (matchingOps.length === coord.options.length - 1 &&
+          !this.arrayContainsArray(matching, coord.options)) {
+        return matching.concat([coord.options]);
+      }
+      return matching;
+    }, []);
   }
 
   getNonOptions(state, coords) {
@@ -227,7 +254,8 @@ class Solver {
   }
 
   arraysAreIdentical(arr1, arr2) {
-    return this.arrayIntersect(arr1, arr2).length === arr1.length;
+    if (!Array.isArray(arr1) || !Array.isArray(arr2)) return undefined;
+    return arr1.sort().toString() === arr2.sort().toString();
   }
 
   isSolved(state) {
@@ -249,18 +277,19 @@ class Solver {
         console.log('Solved!');
         return state;
       }
-      if (prevState === state) {  // Detect infinite loop
-        return false;
-      }
-      prevState = state;
-      return this.solve(state, 0, 0, prevState);  // Start from beginning
+      // THIS IS BROKEN FOR NOW
+      // if (this.arraysAreIdentical(prevState, state)) {  // Detect infinite loop
+      //   return false;
+      // }
+      // prevState = state;
+      return this.solve(state, 0, 0, prevState);
     }
 
     if (x === 8) {
-      return this.solve(state, 0, y + 1, prevState);  // Go to new line
+      return this.solve(state, 0, y + 1, prevState);
     }
 
-    return this.solve(state, x + 1, y, prevState);  // Go to next cell
+    return this.solve(state, x + 1, y, prevState);
   }
 
   printState(state) {
@@ -317,10 +346,21 @@ const hardState = [
   [8,6,_,_,2,4,_,9,_]
 ];
 
+const fiendishState = [
+  [_,_,_,5,_,_,_,6,_],
+  [8,_,9,_,_,_,_,1,_],
+  [1,6,_,_,8,7,_,_,_],
+  [3,_,_,_,2,6,_,_,_],
+  [_,_,7,_,1,_,6,_,_],
+  [_,_,_,8,5,_,_,_,3],
+  [_,_,_,4,7,_,_,2,1],
+  [_,4,_,_,_,_,9,_,8],
+  [_,8,_,_,_,3,_,_,_]
+];
+
 const solver = new Solver();
-console.log(solver.printState(hardState));
-console.log(solver.solve(hardState));
-// solver.checkForSolution(hardState, [2, 1]);
+console.log(solver.printState(fiendishState));
+console.log(solver.solve(fiendishState));
 
 const sampleState = [
   [null,null,null,null,null,null,null,null,null],
