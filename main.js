@@ -35,9 +35,6 @@ class Solver {
     const xAllowed = this.getXAllowed(state, coord);
     const yAllowed = this.getYAllowed(state, coord);
     const squareAllowed = this.getSquareAllowed(state, coord);
-    if (y === 6 && x === 7) {
-      console.log(squareAllowed);
-    }
     if (xAllowed.length === 1) return xAllowed[0];
     if (yAllowed.length === 1) return yAllowed[0];
     if (squareAllowed.length === 1) return squareAllowed[0];
@@ -255,7 +252,22 @@ class Solver {
 
   arraysAreIdentical(arr1, arr2) {
     if (!Array.isArray(arr1) || !Array.isArray(arr2)) return undefined;
-    return arr1.sort().toString() === arr2.sort().toString();
+    if (arr1.length !== arr2.length) return false;
+
+    for (let i = arr1.length; i--;) {
+      if (Array.isArray(arr1[i]) || Array.isArray(arr2[i])) {
+        // console.log('Arrays: ' + arr1[i] + ' | ' + arr2[i]);
+        if (!this.arraysAreIdentical(arr1[i], arr2[i])) {
+          return false;
+        }
+      }
+      if (arr1[i] !== arr2[i]) {
+        // console.log('Values: ' + arr1[i] + ' | ' + arr2[i]);
+        return false;
+      }
+    }
+    return true;
+    // return arr1.sort().toString() === arr2.sort().toString();
   }
 
   isSolved(state) {
@@ -272,16 +284,35 @@ class Solver {
     }
 
     if (x === 8 && y === 8) {
-      console.log(this.printState(state));
+      if (prevState !== null) {
+          console.log(this.printState(state));
+          console.log('           =');
+          console.log(this.printState(prevState));
+          console.log("\n \n \n");
+          // console.log(this.printState(state));
+      }
       if (this.isSolved(state)) {
         console.log('Solved!');
+        // console.log(this.printState(prevState));
+        // console.log(this.printState(state));
         return state;
       }
       // THIS IS BROKEN FOR NOW
-      // if (this.arraysAreIdentical(prevState, state)) {  // Detect infinite loop
-      //   return false;
-      // }
-      // prevState = state;
+      if (prevState !== null) {
+          if (this.printState(prevState) === this.printState(state)) {
+              return false;
+          }
+      }
+
+      if (this.arraysAreIdentical(prevState, state)) {  // Detect infinite loop
+        // console.log('same state at 8x8');
+          // console.log(this.printState(state));
+          // console.log('           =');
+          // console.log(this.printState(prevState));
+          return false;
+      }
+      prevState = state.map(arr => arr.slice());
+      //   prevState = [...state];
       return this.solve(state, 0, 0, prevState);
     }
 
