@@ -260,8 +260,7 @@ class Solver {
         if (!this.arraysAreIdentical(arr1[i], arr2[i])) {
           return false;
         }
-      }
-      if (arr1[i] !== arr2[i]) {
+      } else if (arr1[i] !== arr2[i]) {
         // console.log('Values: ' + arr1[i] + ' | ' + arr2[i]);
         return false;
       }
@@ -284,35 +283,17 @@ class Solver {
     }
 
     if (x === 8 && y === 8) {
-      if (prevState !== null) {
-          console.log(this.printState(state));
-          console.log('           =');
-          console.log(this.printState(prevState));
-          console.log("\n \n \n");
-          // console.log(this.printState(state));
-      }
+      console.log(this.printState(state));
       if (this.isSolved(state)) {
         console.log('Solved!');
-        // console.log(this.printState(prevState));
-        // console.log(this.printState(state));
         return state;
       }
-      // THIS IS BROKEN FOR NOW
       if (prevState !== null) {
-          if (this.printState(prevState) === this.printState(state)) {
-              return false;
-          }
+        if (this.arraysAreIdentical(state, prevState)) {
+          return false;  // Break out if no solution found. Prevents infinite recursion
+        }
       }
-
-      if (this.arraysAreIdentical(prevState, state)) {  // Detect infinite loop
-        // console.log('same state at 8x8');
-          // console.log(this.printState(state));
-          // console.log('           =');
-          // console.log(this.printState(prevState));
-          return false;
-      }
-      prevState = state.map(arr => arr.slice());
-      //   prevState = [...state];
+      prevState = state.map(arr => [...arr]);
       return this.solve(state, 0, 0, prevState);
     }
 
