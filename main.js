@@ -1,4 +1,8 @@
 class Solver {
+  constructor() {
+    // Map of squares to the coordinates they contain
+    this.squareCoordMap = {1:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]],2:[[0,3],[0,4],[0,5],[1,3],[1,4],[1,5],[2,3],[2,4],[2,5]],3:[[0,6],[0,7],[0,8],[1,6],[1,7],[1,8],[2,6],[2,7],[2,8]],4:[[3,0],[3,1],[3,2],[4,0],[4,1],[4,2],[5,0],[5,1],[5,2]],5:[[3,3],[3,4],[3,5],[4,3],[4,4],[4,5],[5,3],[5,4],[5,5]],6:[[3,6],[3,7],[3,8],[4,6],[4,7],[4,8],[5,6],[5,7],[5,8]],7:[[6,0],[6,1],[6,2],[7,0],[7,1],[7,2],[8,0],[8,1],[8,2]],8:[[6,3],[6,4],[6,5],[7,3],[7,4],[7,5],[8,3],[8,4],[8,5]],9:[[6,6],[6,7],[6,8],[7,6],[7,7],[7,8],[8,6],[8,7],[8,8]]};
+  }
   // Returns all of the values in the same row, column, and square of a given coordinate
   getAdjacentValues(state, coord) {
     const [y, x] = coord;
@@ -104,8 +108,9 @@ class Solver {
 
   getAllowed(state, coord) {
     const adjacent = this.getAdjacentValues(state, coord);
+    const adjacentVals = [].concat(adjacent.x, adjacent.y, adjacent.squareVals);
     return [1,2,3,4,5,6,7,8,9].filter(num => {
-      return ![].concat(adjacent.x, adjacent.y, adjacent.squareVals).includes(num);
+      return !adjacentVals.includes(num);
     });
   }
   getXAllowed(state, coord) {
@@ -211,10 +216,11 @@ class Solver {
   }
 
   // Get the square (1 through 9) that contains the given coordinates
+  // TODO: Consider caching square/coordinate maps to save performance
   getSquare(y, x) {
-    return [1,2,3,4,5,6,7,8,9].filter(square => {
+    return [1,2,3,4,5,6,7,8,9].find(square => {
       return this.getSquareCoords(square).some(coord => {
-        return JSON.stringify(coord) === JSON.stringify([y, x]);  // Stringify to compare arrays
+        return this.arraysAreIdentical(coord, [y, x]);
       });
     });
   }
@@ -231,19 +237,25 @@ class Solver {
 
   // Get the coordinates contained within in a given square (1 through 9)
   getSquareCoords(square) {
-    const yMapper = {
-      1: [0, 1, 2], 2: [0, 1, 2], 3: [0, 1, 2],
-      4: [3, 4, 5], 5: [3, 4, 5], 6: [3, 4, 5],
-      7: [6, 7, 8], 8: [6, 7, 8], 9: [6, 7, 8],
-    };
-    const xMapper = {
-      1: [0, 1, 2], 2: [3, 4, 5], 3: [6, 7, 8],
-      4: [0, 1, 2], 5: [3, 4, 5], 6: [6, 7, 8],
-      7: [0, 1, 2], 8: [3, 4, 5], 9: [6, 7, 8],
-    };
-    return yMapper[square].reduce((coords, y) => {
-      return coords.concat(xMapper[square].map(x => [y, x]));
-    }, []);
+    // No reason to calculate this each time, stored data as a property
+    return this.squareCoordMap[square];
+    // const yMapper = {
+    //   1: [0, 1, 2], 2: [0, 1, 2], 3: [0, 1, 2],
+    //   4: [3, 4, 5], 5: [3, 4, 5], 6: [3, 4, 5],
+    //   7: [6, 7, 8], 8: [6, 7, 8], 9: [6, 7, 8],
+    // };
+    // const xMapper = {
+    //   1: [0, 1, 2], 2: [3, 4, 5], 3: [6, 7, 8],
+    //   4: [0, 1, 2], 5: [3, 4, 5], 6: [6, 7, 8],
+    //   7: [0, 1, 2], 8: [3, 4, 5], 9: [6, 7, 8],
+    // };
+    // const yVals = [].concat(yMapper[square], yMapper[square], yMapper[square]).sort();
+    // const xVals = [].concat(xMapper[square], xMapper[square], xMapper[square]);
+    // return yVals.map((val, index) => [val, xVals[index]]);
+    //
+    // // return yMapper[square].reduce((coords, y) => {
+    // //   return coords.concat(xMapper[square].map(x => [y, x]));
+    // // }, []);
   }
 
   getUniqueValues(array) {
@@ -256,17 +268,14 @@ class Solver {
 
     for (let i = arr1.length; i--;) {
       if (Array.isArray(arr1[i]) || Array.isArray(arr2[i])) {
-        // console.log('Arrays: ' + arr1[i] + ' | ' + arr2[i]);
         if (!this.arraysAreIdentical(arr1[i], arr2[i])) {
           return false;
         }
       } else if (arr1[i] !== arr2[i]) {
-        // console.log('Values: ' + arr1[i] + ' | ' + arr2[i]);
         return false;
       }
     }
     return true;
-    // return arr1.sort().toString() === arr2.sort().toString();
   }
 
   isSolved(state) {
@@ -277,23 +286,23 @@ class Solver {
     try {
       state[y][x] = this.checkForSolution(state, [y, x]);
     } catch (error) {
-      console.log(error);
-      if (error.data) console.log(this.printState(error.data.state));
-      return 'Error';
+      // console.log(error);
+      // if (error.data) console.log(this.printState(error.data.state));
+      return {solved: false, state: state, error: error};
     }
 
     if (x === 8 && y === 8) {
-      console.log(this.printState(state));
       if (this.isSolved(state)) {
+        console.log(this.printState(state));
         console.log('Solved!');
-        return state;
+        return {solved: true, state: state};
       }
       if (prevState !== null) {
         if (this.arraysAreIdentical(state, prevState)) {
-          return false;  // Break out if no solution found. Prevents infinite recursion
+          return {solved: false, state: state};  // Break out if no solution found. Prevents infinite recursion
         }
       }
-      prevState = state.map(arr => [...arr]);
+      prevState = this.copyState(state);
       return this.solve(state, 0, 0, prevState);
     }
 
@@ -304,15 +313,44 @@ class Solver {
     return this.solve(state, x + 1, y, prevState);
   }
 
+  solveBruteForce(state) {
+    const solveAttempt = this.solve(state);
+    if (solveAttempt.solved === false) {
+      state = this.copyState(solveAttempt.state);
+      // Just gonna go ahead and do some heavy nested looping here
+      // For each null cell, get it's possible values,
+      // then try solving it with each one until a correct solution is found
+      for (const [y, row] of state.entries()) {
+        for (const [x, val] of row.entries()) {
+          if (val === null) {
+            for (const option of this.getOptions(state, [y, x])) {
+              const testState = this.copyState(state);
+              testState[y][x] = option;
+              const result = this.solve(testState);
+              if (result.solved === true) {
+                return result.state;
+              }
+            }
+          }
+        }
+      }
+    }
+    return solveAttempt;
+  }
+
+  copyState(state) {
+    return state.map(arr => [...arr]);
+  }
+
   printState(state) {
     return state.reduce((text, row, index) => {
       if (index === 3 || index === 6) {
-        text = text.concat("\n");
+        text = text.concat("\n");  // Add horizontal spacing
       }
       const rowString = row.reduce((rowText, val, rowIndex) => {
         val = val === null ? '_' : val;
         if (rowIndex === 3 || rowIndex === 6) {
-          rowText = rowText.concat(' ');
+          rowText = rowText.concat(' ');  // Add vertical spacing
         }
         return rowText.concat(' ' + val);
       }, '');
@@ -372,7 +410,13 @@ const fiendishState = [
 
 const solver = new Solver();
 console.log(solver.printState(fiendishState));
-console.log(solver.solve(fiendishState));
+console.log(solver.solveBruteForce(fiendishState));
+
+// const squareData = [1,2,3,4,5,6,7,8,9].map(square => {
+//   return {[square]: solver.getSquareCoords(square)};
+// });
+// console.log(squareData);
+// console.log(JSON.stringify(squareData));
 
 const sampleState = [
   [null,null,null,null,null,null,null,null,null],
@@ -385,4 +429,106 @@ const sampleState = [
   [null,null,null,null,null,null,null,null,null],
   [null,null,null,null,null,null,null,null,null]
 ];
+
+const squareCoordMap = {
+  "1": [
+    [0, 0],
+    [0, 1],
+    [0, 2],
+    [1, 0],
+    [1, 1],
+    [1, 2],
+    [2, 0],
+    [2, 1],
+    [2, 2]
+  ],
+  "2": [
+    [0, 3],
+    [0, 4],
+    [0, 5],
+    [1, 3],
+    [1, 4],
+    [1, 5],
+    [2, 3],
+    [2, 4],
+    [2, 5]
+  ],
+  "3": [
+    [0, 6],
+    [0, 7],
+    [0, 8],
+    [1, 6],
+    [1, 7],
+    [1, 8],
+    [2, 6],
+    [2, 7],
+    [2, 8]
+  ],
+  "4": [
+    [3, 0],
+    [3, 1],
+    [3, 2],
+    [4, 0],
+    [4, 1],
+    [4, 2],
+    [5, 0],
+    [5, 1],
+    [5, 2]
+  ],
+  "5": [
+    [3, 3],
+    [3, 4],
+    [3, 5],
+    [4, 3],
+    [4, 4],
+    [4, 5],
+    [5, 3],
+    [5, 4],
+    [5, 5]
+  ],
+  "6": [
+    [3, 6],
+    [3, 7],
+    [3, 8],
+    [4, 6],
+    [4, 7],
+    [4, 8],
+    [5, 6],
+    [5, 7],
+    [5, 8]
+  ],
+  "7": [
+    [6, 0],
+    [6, 1],
+    [6, 2],
+    [7, 0],
+    [7, 1],
+    [7, 2],
+    [8, 0],
+    [8, 1],
+    [8, 2]
+  ],
+  "8": [
+    [6, 3],
+    [6, 4],
+    [6, 5],
+    [7, 3],
+    [7, 4],
+    [7, 5],
+    [8, 3],
+    [8, 4],
+    [8, 5]
+  ],
+  "9": [
+    [6, 6],
+    [6, 7],
+    [6, 8],
+    [7, 6],
+    [7, 7],
+    [7, 8],
+    [8, 6],
+    [8, 7],
+    [8, 8]
+  ]
+};
 
